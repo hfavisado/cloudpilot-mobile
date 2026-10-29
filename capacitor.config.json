@@ -1,0 +1,7 @@
+{
+    "appId": "app.cloudpilot.mobile",
+    "appName": "Cloudpilot",
+    "webDir": "web-build",
+    "server": { "androidScheme": "https" },
+    "ios": { "contentInset": "never" }
+}

@@ -1,0 +1,50 @@
+ion-tab-bar {
+    display: none !important;
+}
+
+body.cpm-emulation ion-header {
+    display: none !important;
+}
+
+body.cpm-emulation canvas {
+    image-rendering: pixelated;
+}
+
+#cpm-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: flex-start;
+    justify-content: center;
+}
+
+#cpm-menu .cpm-panel {
+    width: min(100%, 420px);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding-top: env(safe-area-inset-top);
+    background: #222;
+}
+
+#cpm-menu button {
+    padding: 16px;
+    font-size: 17px;
+    color: #fff;
+    background: #333;
+    border: 0;
+    text-align: left;
+}
+
+#cpm-back {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 8px);
+    right: 8px;
+    z-index: 99999;
+    padding: 8px 14px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.7);
+    border: 0;
+    border-radius: 16px;
+}

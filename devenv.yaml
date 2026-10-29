@@ -1,0 +1,8 @@
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+  nixpkgs-emscripten:
+    # Upstream builds against Emscripten 4.0.10; 25.05 ships exactly that.
+    url: github:NixOS/nixpkgs/nixos-25.05
+nixpkgs:
+  allowUnfree: true
