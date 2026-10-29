@@ -6,6 +6,7 @@ node_modules/
 web-build/
 .DS_Store
 .android/
+.emscripten-cache/
 android/.gradle/
 android/build/
 android/app/build/

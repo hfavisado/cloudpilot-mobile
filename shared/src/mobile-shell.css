@@ -36,15 +36,6 @@ body.cpm-emulation canvas {
     border: 0;
     text-align: left;
 }
-
 #cpm-back {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 8px);
-    right: 8px;
-    z-index: 99999;
-    padding: 8px 14px;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.7);
-    border: 0;
-    border-radius: 16px;
+    margin-inline-end: 8px;
 }

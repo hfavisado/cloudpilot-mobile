@@ -25,5 +25,5 @@ in
   };
 
   # Xcode and CocoaPods come from the host; Nix cannot provide them.
-  packages = [ pkgs.git emPkgs.emscripten emPkgs.binaryen pkgs.gnumake pkgs.python3 ];
+  packages = [ pkgs.git emPkgs.emscripten emPkgs.binaryen pkgs.wabt pkgs.gnumake pkgs.python3 ];
 }

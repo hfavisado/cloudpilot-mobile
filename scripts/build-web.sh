@@ -9,7 +9,8 @@ OUT="$ROOT/web-build"
 if [ -z "${SKIP_WASM:-}" ]; then
     EMCC_DIR="$(dirname "$(readlink -f "$(command -v emcc)")")"
     # Upstream expects an EMSDK layout, which the Nix packages do not have.
-    WEBIDL_BINDER="python3 $EMCC_DIR/../share/emscripten/tools/webidl_binder.py" \
+    EM_CACHE="$ROOT/.emscripten-cache" \
+        WEBIDL_BINDER="python3 $EMCC_DIR/../share/emscripten/tools/webidl_binder.py" \
         WASMOPT="$(command -v wasm-opt)" \
         make -C "$UPSTREAM/src" emscripten
 fi

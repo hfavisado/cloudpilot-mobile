@@ -6,6 +6,7 @@ const EMULATION = '#/tab/emulation';
 const PAUSE_ROUTE = '#/tab/sessions';
 const EDGE_PX = 24;
 const SWIPE_PX = 60;
+const CROSS_AXIS_PX = 40;
 
 const MENU: ReadonlyArray<readonly [string, string]> = [
     ['Load device image', '#/tab/sessions'],
@@ -15,12 +16,15 @@ const MENU: ReadonlyArray<readonly [string, string]> = [
 ];
 
 let menu: HTMLElement;
-let backButton: HTMLElement;
+let backButtons: HTMLElement;
+let menuReturnButton: HTMLButtonElement;
 let menuOpen = false;
+let menuReturnRoute = EMULATION;
 // Leaving the emulation page is what pauses and saves the session upstream.
 let resumeOnActive = false;
 
 const onEmulation = () => location.hash === EMULATION;
+const onSessions = () => location.hash === PAUSE_ROUTE;
 
 function go(route: string): void {
     location.hash = route;
@@ -29,19 +33,26 @@ function go(route: string): void {
 function syncRouteState(): void {
     const emulation = onEmulation();
     document.body.classList.toggle('cpm-emulation', emulation);
-    backButton.style.display = emulation || menuOpen ? 'none' : 'block';
+
+    const toolbar = document.querySelector('ion-header:not([collapse]) ion-toolbar');
+    if (toolbar && backButtons.parentElement !== toolbar) toolbar.prepend(backButtons);
+
+    const display = emulation || onSessions() || menuOpen ? 'none' : 'flex';
+    if (backButtons.style.display !== display) backButtons.style.display = display;
 }
 
 function openMenu(): void {
     if (menuOpen) return;
 
+    menuReturnRoute = location.hash || EMULATION;
+    menuReturnButton.textContent = menuReturnRoute === EMULATION ? 'Back to emulator' : menuReturnRoute === PAUSE_ROUTE ? 'Sessions' : 'Back';
     menuOpen = true;
     if (onEmulation()) go(PAUSE_ROUTE);
     menu.style.display = 'flex';
     syncRouteState();
 }
 
-function closeMenu(route = EMULATION): void {
+function closeMenu(route = menuReturnRoute): void {
     menuOpen = false;
     menu.style.display = 'none';
     go(route);
@@ -57,10 +68,9 @@ function buildUi(): void {
     const panel = document.createElement('div');
     panel.className = 'cpm-panel';
 
-    const resume = document.createElement('button');
-    resume.textContent = 'Back to emulator';
-    resume.addEventListener('click', () => closeMenu());
-    panel.append(resume);
+    menuReturnButton = document.createElement('button');
+    menuReturnButton.addEventListener('click', () => closeMenu());
+    panel.append(menuReturnButton);
 
     for (const [label, route] of MENU) {
         const item = document.createElement('button');
@@ -71,23 +81,35 @@ function buildUi(): void {
 
     menu.append(panel);
 
-    backButton = document.createElement('button');
-    backButton.id = 'cpm-back';
-    backButton.textContent = 'Emulator';
-    backButton.addEventListener('click', () => go(EMULATION));
+    backButtons = document.createElement('ion-buttons');
+    backButtons.id = 'cpm-back';
+    backButtons.slot = 'start';
+    const backButton = document.createElement('ion-button');
+    backButton.textContent = 'Sessions';
+    backButton.setAttribute('aria-label', 'Back to sessions');
+    backButton.addEventListener('click', () => go(PAUSE_ROUTE));
+    backButtons.append(backButton);
 
-    document.body.append(menu, backButton);
+    document.body.append(menu);
 }
 
 function installSwipe(): void {
+    let startX: number | undefined;
     let startY: number | undefined;
 
     window.addEventListener(
         'touchstart',
         (e) => {
+            if (e.touches.length !== 1) {
+                startX = undefined;
+                startY = undefined;
+                return;
+            }
+
             const t = e.touches[0];
-            startY = e.touches.length === 1 && t.clientY <= EDGE_PX && !menuOpen ? t.clientY : undefined;
-            if (startY !== undefined) e.stopPropagation();
+            startX = t.clientX <= EDGE_PX ? t.clientX : undefined;
+            startY = t.clientY <= EDGE_PX || menuOpen ? t.clientY : undefined;
+            if (startX !== undefined || startY !== undefined) e.stopPropagation();
         },
         { capture: true, passive: true },
     );
@@ -95,16 +117,47 @@ function installSwipe(): void {
     window.addEventListener(
         'touchmove',
         (e) => {
-            if (startY === undefined) return;
-
-            e.stopPropagation();
-            if (e.touches[0].clientY - startY >= SWIPE_PX) {
+            if (e.touches.length !== 1) {
+                startX = undefined;
                 startY = undefined;
+                return;
+            }
+
+            const t = e.touches[0];
+            const dx = startX === undefined ? 0 : t.clientX - startX;
+            const dy = startY === undefined ? 0 : t.clientY - startY;
+
+            if (menuOpen && startY !== undefined && dy <= -SWIPE_PX && Math.abs(dx) < CROSS_AXIS_PX) {
+                startX = undefined;
+                startY = undefined;
+                e.stopPropagation();
+                e.preventDefault();
+                closeMenu();
+            } else if (!menuOpen && startY !== undefined && dy >= SWIPE_PX && Math.abs(dx) < CROSS_AXIS_PX) {
+                startX = undefined;
+                startY = undefined;
+                e.stopPropagation();
+                e.preventDefault();
                 openMenu();
+            } else if (!menuOpen && startX !== undefined && dx >= SWIPE_PX && Math.abs(dy) < CROSS_AXIS_PX && !onSessions()) {
+                startX = undefined;
+                startY = undefined;
+                e.stopPropagation();
+                e.preventDefault();
+                go(PAUSE_ROUTE);
+            } else if (startX !== undefined || startY !== undefined) {
+                e.stopPropagation();
             }
         },
-        { capture: true, passive: true },
+        { capture: true, passive: false },
     );
+
+    const reset = () => {
+        startX = undefined;
+        startY = undefined;
+    };
+    window.addEventListener('touchend', reset, { capture: true, passive: true });
+    window.addEventListener('touchcancel', reset, { capture: true, passive: true });
 }
 
 function fitCanvas(): void {
@@ -122,7 +175,10 @@ function fitCanvas(): void {
 function installFit(): void {
     window.addEventListener('resize', fitCanvas);
     window.addEventListener('hashchange', fitCanvas);
-    new MutationObserver(fitCanvas).observe(document.body, {
+    new MutationObserver(() => {
+        fitCanvas();
+        syncRouteState();
+    }).observe(document.body, {
         subtree: true,
         childList: true,
         attributes: true,
@@ -142,6 +198,20 @@ function installLifecycle(): void {
     });
 }
 
+function installBackNavigation(): void {
+    if (Capacitor.getPlatform() !== 'android') return;
+
+    void App.addListener('backButton', () => {
+        if (menuOpen) {
+            closeMenu();
+        } else if (!onSessions()) {
+            go(PAUSE_ROUTE);
+        } else {
+            void App.exitApp();
+        }
+    });
+}
+
 if (!location.hash) location.hash = EMULATION;
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -155,4 +225,5 @@ window.addEventListener('DOMContentLoaded', () => {
         installLifecycle();
         void StatusBar.hide();
     }
+    installBackNavigation();
 });
